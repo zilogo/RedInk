@@ -1,6 +1,9 @@
 services:
   redink:
-    image: hismax/redink:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: redink:local
     container_name: redink
     ports:
       - "12398:12398"
