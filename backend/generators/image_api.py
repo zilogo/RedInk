@@ -72,7 +72,7 @@ class ImageApiGenerator(ImageGeneratorBase):
         **kwargs
     ) -> bytes:
         """
-        生成图片（使用 /v1/images/generations）
+        生成图片（使用 /v1/chat/completions with modalities）
 
         Args:
             prompt: 图片描述
@@ -100,14 +100,8 @@ class ImageApiGenerator(ImageGeneratorBase):
             "Content-Type": "application/json"
         }
 
-        # 构建请求体（使用 /v1/images/generations 格式）
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "response_format": "b64_json",  # 关键！获取 base64 数据而不是 URL
-            "aspect_ratio": aspect_ratio,
-            "image_size": self.image_size  # 4K 参数（nano-banana-2 专属）
-        }
+        # 构建消息内容
+        content_parts = []
 
         # 收集所有参考图片
         all_reference_images = []
@@ -120,19 +114,20 @@ class ImageApiGenerator(ImageGeneratorBase):
         if reference_image and reference_image not in all_reference_images:
             all_reference_images.append(reference_image)
 
-        # 如果有参考图片，添加到 image 数组（Data URI 格式）
+        # 如果有参考图片，添加到消息中
         if all_reference_images:
             logger.debug(f"  添加 {len(all_reference_images)} 张参考图片")
-            image_uris = []
             for idx, img_data in enumerate(all_reference_images):
                 # 压缩图片到 200KB 以内
                 compressed_img = compress_image(img_data, max_size_kb=200)
                 logger.debug(f"  参考图 {idx}: {len(img_data)} -> {len(compressed_img)} bytes")
                 base64_image = base64.b64encode(compressed_img).decode('utf-8')
-                data_uri = f"data:image/png;base64,{base64_image}"
-                image_uris.append(data_uri)
-
-            payload["image"] = image_uris  # images/generations 端点使用 image 数组
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{base64_image}"
+                    }
+                })
 
             # 增强提示词以利用参考图
             ref_count = len(all_reference_images)
@@ -145,10 +140,32 @@ class ImageApiGenerator(ImageGeneratorBase):
 2. 使用相似的光影处理
 3. 保持一致的画面质感
 4. 如果参考图中有人物或产品，可以适当融入"""
-            payload["prompt"] = enhanced_prompt
+            content_parts.append({
+                "type": "text",
+                "text": enhanced_prompt
+            })
+        else:
+            # 没有参考图，直接使用提示词
+            content_parts.append({
+                "type": "text",
+                "text": prompt
+            })
+
+        # 构建请求体（使用 chat/completions 格式）
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content_parts
+                }
+            ],
+            "modalities": ["image", "text"],  # 关键！启用图片生成模式
+            "max_tokens": 512
+        }
 
         # 发送请求
-        api_url = f"{self.base_url}/v1/images/generations"
+        api_url = f"{self.base_url}/v1/chat/completions"
         logger.debug(f"  发送请求到: {api_url}")
         response = requests.post(
             api_url,
@@ -173,33 +190,52 @@ class ImageApiGenerator(ImageGeneratorBase):
             )
 
         result = response.json()
-        logger.debug(f"  API 响应: data 长度={len(result.get('data', []))}")
+        logger.debug(f"  API 响应: {str(result)[:200]}")
 
-        # 提取 b64_json 数据
-        if "data" in result and len(result["data"]) > 0:
-            item = result["data"][0]
+        # 从 chat completions 响应中提取图片数据
+        if "choices" in result and len(result["choices"]) > 0:
+            choice = result["choices"][0]
+            message = choice.get("message", {})
 
-            if "b64_json" in item:
-                b64_data_uri = item["b64_json"]
+            # 优先检查 message.images 数组（Gemini 3 Pro Image 格式）
+            images = message.get("images", [])
+            if images and len(images) > 0:
+                image_obj = images[0]
+                image_url = image_obj.get("image_url", {}).get("url", "")
+                if image_url.startswith("data:image"):
+                    # 提取 base64 数据
+                    b64_string = image_url.split(',', 1)[1]
+                    image_data = base64.b64decode(b64_string)
+                    logger.info(f"✅ Image API 图片生成成功: {len(image_data)} bytes")
+                    return image_data
 
-                # 去掉 Data URI 前缀（data:image/png;base64,）
-                if b64_data_uri.startswith('data:'):
-                    b64_string = b64_data_uri.split(',', 1)[1]
-                else:
-                    b64_string = b64_data_uri
-
-                # 解码 base64
+            # 其次检查 content 字段（备用格式）
+            content = message.get("content")
+            if isinstance(content, list):
+                # 查找图片部分
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "image_url":
+                        image_url = part.get("image_url", {}).get("url", "")
+                        if image_url.startswith("data:image"):
+                            # 提取 base64 数据
+                            b64_string = image_url.split(',', 1)[1]
+                            image_data = base64.b64decode(b64_string)
+                            logger.info(f"✅ Image API 图片生成成功: {len(image_data)} bytes")
+                            return image_data
+            elif isinstance(content, str) and content.startswith("data:image"):
+                # 直接是 data URI
+                b64_string = content.split(',', 1)[1]
                 image_data = base64.b64decode(b64_string)
                 logger.info(f"✅ Image API 图片生成成功: {len(image_data)} bytes")
                 return image_data
 
-        logger.error(f"无法从响应中提取图片数据: {str(result)[:200]}")
+        logger.error(f"无法从响应中提取图片数据: {str(result)[:500]}")
         raise Exception(
-            f"图片数据提取失败：未找到 b64_json 数据。\n"
+            f"图片数据提取失败：未找到图片数据。\n"
             f"API响应片段: {str(result)[:500]}\n"
             "可能原因：\n"
             "1. API返回格式与预期不符\n"
-            "2. response_format 参数未生效\n"
-            "3. 该模型不支持 b64_json 格式\n"
+            "2. modalities 参数未生效\n"
+            "3. 该模型不支持图片生成\n"
             "建议：检查API文档确认返回格式要求"
         )
