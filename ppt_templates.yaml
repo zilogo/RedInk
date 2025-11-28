@@ -1,0 +1,31 @@
+# PPT 模板配置文件
+
+# 默认模板（16:9 宽屏）
+default:
+  slide_width: 10        # 幻灯片宽度（英寸）
+  slide_height: 5.625    # 幻灯片高度（英寸，16:9 比例）
+  title_font_size: 44    # 标题字号
+  content_font_size: 24  # 内容字号
+  title_font_name: '微软雅黑'
+  content_font_name: '微软雅黑'
+  background_color: '#FFFFFF'
+
+# 专业模板（4:3 标准）
+professional:
+  slide_width: 10
+  slide_height: 7.5      # 4:3 比例
+  title_font_size: 36
+  content_font_size: 20
+  title_font_name: 'Arial'
+  content_font_name: 'Arial'
+  background_color: '#F5F5F5'
+
+# 简洁模板（16:9 宽屏）
+minimal:
+  slide_width: 10
+  slide_height: 5.625
+  title_font_size: 40
+  content_font_size: 22
+  title_font_name: 'Helvetica'
+  content_font_name: 'Helvetica'
+  background_color: '#FFFFFF'
