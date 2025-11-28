@@ -1,4 +1,5 @@
 <template>
+
   <div class="container">
     <div class="page-header">
       <div>
@@ -12,6 +13,11 @@
         <button class="btn btn-primary" @click="downloadAll">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           一键下载
+        </button>
+        <button class="btn btn-primary" @click="handleGeneratePPT" :disabled="isGeneratingPPT">
+          <svg v-if="!isGeneratingPPT" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <div v-else class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+          {{ isGeneratingPPT ? '生成中...' : '生成 PPT' }}
         </button>
       </div>
     </div>
@@ -81,11 +87,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGeneratorStore } from '../stores/generator'
-import { regenerateImage } from '../api'
+import { regenerateImage, generatePPT, downloadPPT } from '../api'
 
 const router = useRouter()
 const store = useGeneratorStore()
 const regeneratingIndex = ref<number | null>(null)
+const isGeneratingPPT = ref(false)
 
 const viewImage = (url: string) => {
   const baseUrl = url.split('?')[0]
@@ -156,6 +163,25 @@ const handleRegenerate = async (image: any) => {
     alert('重绘失败: ' + e.message)
   } finally {
     regeneratingIndex.value = null
+  }
+}
+
+const handleGeneratePPT = async () => {
+  if (!store.taskId || isGeneratingPPT.value) return
+
+  isGeneratingPPT.value = true
+  try {
+    const result = await generatePPT(store.taskId, store.outline)
+    if (result.success) {
+      // 生成成功后直接下载
+      downloadPPT(store.taskId)
+    } else {
+      alert('PPT 生成失败: ' + (result.error || '未知错误'))
+    }
+  } catch (e: any) {
+    alert('PPT 生成失败: ' + e.message)
+  } finally {
+    isGeneratingPPT.value = false
   }
 }
 </script>

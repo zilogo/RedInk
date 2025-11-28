@@ -17,7 +17,7 @@ class PPTService:
     def __init__(self):
         logger.debug("初始化 PPTService...")
         self.history_root_dir = Path(__file__).parent.parent.parent / "history"
-        self.template_config = self._load_template_config()
+        self.templates = self._load_template_config()
         logger.info("PPTService 初始化完成")
 
     def _load_template_config(self) -> dict:
@@ -28,15 +28,32 @@ class PPTService:
             with open(config_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f) or {}
 
-        # 默认配置
+        # 如果文件不存在，返回默认模板配置
         return {
-            'slide_width': 10,      # 英寸
-            'slide_height': 5.625,  # 英寸（16:9）
+            'default': {
+                'slide_width': 10,      # 英寸
+                'slide_height': 5.625,  # 英寸（16:9）
+                'title_font_size': 44,
+                'content_font_size': 24,
+                'title_font_name': '微软雅黑',
+                'content_font_name': '微软雅黑',
+            }
+        }
+
+    def _get_template_config(self, template: str = 'default') -> dict:
+        """获取指定模板的配置"""
+        if template in self.templates:
+            return self.templates[template]
+        # 如果模板不存在，返回默认模板
+        logger.warning(f"模板 '{template}' 不存在，使用默认模板")
+        return self.templates.get('default', {
+            'slide_width': 10,
+            'slide_height': 5.625,
             'title_font_size': 44,
             'content_font_size': 24,
             'title_font_name': '微软雅黑',
             'content_font_name': '微软雅黑',
-        }
+        })
 
     def generate_ppt(
         self,
@@ -58,10 +75,13 @@ class PPTService:
         try:
             logger.info(f"开始生成 PPT: task_id={task_id}, template={template}")
 
+            # 获取模板配置
+            template_config = self._get_template_config(template)
+
             # 创建 Presentation 对象
             prs = Presentation()
-            prs.slide_width = Inches(self.template_config['slide_width'])
-            prs.slide_height = Inches(self.template_config['slide_height'])
+            prs.slide_width = Inches(template_config['slide_width'])
+            prs.slide_height = Inches(template_config['slide_height'])
 
             # 任务目录
             task_dir = self.history_root_dir / task_id
@@ -93,7 +113,7 @@ class PPTService:
                 # 可选：添加文本框（覆盖在图片上）
                 if page_type == 'cover':
                     # 封面：只添加主标题
-                    self._add_title_textbox(slide, content, prs)
+                    self._add_title_textbox(slide, content, prs, template_config)
 
             # 保存 PPT
             output_filename = f"{task_id}.pptx"
@@ -148,7 +168,7 @@ class PPTService:
             height=pic_height
         )
 
-    def _add_title_textbox(self, slide, text: str, prs: Presentation):
+    def _add_title_textbox(self, slide, text: str, prs: Presentation, template_config: dict):
         """
         在幻灯片顶部添加标题文本框
 
@@ -156,6 +176,7 @@ class PPTService:
             slide: 幻灯片对象
             text: 标题文本
             prs: Presentation 对象
+            template_config: 模板配置
         """
         # 提取标题（取第一行或前50字）
         title_text = text.split('\n')[0][:50]
@@ -173,8 +194,8 @@ class PPTService:
         # 样式设置
         paragraph = text_frame.paragraphs[0]
         paragraph.alignment = PP_ALIGN.CENTER
-        paragraph.font.size = Pt(self.template_config['title_font_size'])
-        paragraph.font.name = self.template_config['title_font_name']
+        paragraph.font.size = Pt(template_config['title_font_size'])
+        paragraph.font.name = template_config['title_font_name']
         paragraph.font.bold = True
 
     def get_ppt_path(self, task_id: str) -> Optional[str]:
