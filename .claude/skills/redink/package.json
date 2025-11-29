@@ -1,0 +1,24 @@
+{
+  "name": "redink-skill",
+  "version": "1.0.0",
+  "description": "Claude Code Skill for RedInk - AI-powered Xiaohongshu image-text content generator",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node dist/index.js"
+  },
+  "keywords": ["claude-code", "skill", "redink", "xiaohongshu"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.7.0",
+    "form-data": "^4.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/node-fetch": "^2.6.9",
+    "typescript": "^5.3.3"
+  }
+}
