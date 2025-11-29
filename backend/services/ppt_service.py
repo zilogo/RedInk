@@ -407,57 +407,29 @@ class PptService:
                 try:
                     # 如果启用了图片生成服务，则生成带图片的页面
                     if image_service:
-                        # 判断是否使用完整页面设计
-                        if image_service.should_use_fullpage(page_type):
-                            # 生成完整页面设计图片
-                            logger.info(f"页面 {index} 使用完整页面设计模式")
-                            yield {
-                                "event": "image_progress",
-                                "data": {
-                                    "index": index,
-                                    "status": "generating_fullpage_image",
-                                    "title": title
-                                }
+                        # 【新策略】所有页面都使用完整页面设计，提升美观度
+                        logger.info(f"页面 {index} 使用完整页面设计模式（纯图片）")
+                        yield {
+                            "event": "image_progress",
+                            "data": {
+                                "index": index,
+                                "status": "generating_fullpage_image",
+                                "title": title
                             }
+                        }
 
-                            image_data = image_service.generate_page_image(
-                                page_data=page,
-                                style_config=style_config,
-                                user_topic=topic,
-                                logo_base64=logo_base64,
-                                image_type='fullpage',
-                                aspect_ratio='16:9'
-                            )
+                        image_data = image_service.generate_page_image(
+                            page_data=page,
+                            style_config=style_config,
+                            user_topic=topic,
+                            logo_base64=logo_base64,
+                            image_type='fullpage',
+                            aspect_ratio='16:9'
+                        )
 
-                            # 添加完整图片页面
-                            slide = generator.add_fullpage_image_slide(image_data)
-                            logger.info(f"页面 {index} 完整图片生成成功")
-                        else:
-                            # 生成背景图片 + 文字内容
-                            logger.info(f"页面 {index} 使用背景图片模式")
-                            yield {
-                                "event": "image_progress",
-                                "data": {
-                                    "index": index,
-                                    "status": "generating_background_image",
-                                    "title": title
-                                }
-                            }
-
-                            image_data = image_service.generate_page_image(
-                                page_data=page,
-                                style_config=style_config,
-                                user_topic=topic,
-                                logo_base64=logo_base64,
-                                image_type='background',
-                                aspect_ratio='16:9'
-                            )
-
-                            # 先添加页面（文字内容）
-                            slide = generator.add_slide(page, detailed_content)
-                            # 再设置背景图片
-                            generator.set_slide_background_image(slide, image_data)
-                            logger.info(f"页面 {index} 背景图片生成成功")
+                        # 添加完整图片页面
+                        slide = generator.add_fullpage_image_slide(image_data)
+                        logger.info(f"页面 {index} 完整图片生成成功")
                     else:
                         # 不使用图片，仅生成文字页面
                         slide = generator.add_slide(page, detailed_content)
