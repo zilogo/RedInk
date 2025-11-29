@@ -346,15 +346,17 @@ class PptService:
             generator = PythonPptxGenerator(style_config)
             generator.create_presentation()
 
-            # 初始化图片生成服务（仅当有Logo时启用）
+            # 初始化图片生成服务（默认启用以提升美观度）
             image_service = None
-            if logo_base64:
-                try:
-                    image_service = PptImageService()
+            try:
+                image_service = PptImageService()
+                if logo_base64:
                     logger.info("图片生成服务已启用（检测到Logo）")
-                except Exception as e:
-                    logger.warning(f"图片生成服务初始化失败，将使用纯文本PPT: {e}")
-                    image_service = None
+                else:
+                    logger.info("图片生成服务已启用（无Logo，使用纯背景图片）")
+            except Exception as e:
+                logger.warning(f"图片生成服务初始化失败，将使用纯文本PPT: {e}")
+                image_service = None
 
             # 发送开始事件
             yield {
