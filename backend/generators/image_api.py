@@ -160,8 +160,8 @@ class ImageApiGenerator(ImageGeneratorBase):
                     "content": content_parts
                 }
             ],
-            "modalities": ["image", "text"],  # 关键！启用图片生成模式
-            "max_tokens": 512
+            "modalities": ["image"],  # 关键！仅生成图片，不要文本推理
+            "max_tokens": 8192  # 增加tokens限制，确保有足够空间生成图片
         }
 
         # 发送请求
