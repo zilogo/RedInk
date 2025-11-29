@@ -5,6 +5,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from backend.config import Config
 from backend.routes.api import api_bp
+from backend.routes.ppt_api import ppt_bp
 
 
 def setup_logging():
@@ -64,6 +65,7 @@ def create_app():
     })
 
     app.register_blueprint(api_bp)
+    app.register_blueprint(ppt_bp)
 
     # 启动时验证配置
     _validate_config_on_startup(logger)
