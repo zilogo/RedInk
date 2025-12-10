@@ -1,0 +1,21 @@
+{
+  "name": "redink-cskill",
+  "owner": {
+    "name": "RedInk",
+    "email": "noreply@redink.dev"
+  },
+  "metadata": {
+    "description": "AI-powered Xiaohongshu (小红书) content generator creating styled image-text posts from topics",
+    "version": "1.0.0",
+    "created": "2025-11-28"
+  },
+  "plugins": [
+    {
+      "name": "redink-generator",
+      "description": "Generate Xiaohongshu-style content with AI-powered text outlines and styled images. Supports Google Gemini, OpenAI-compatible APIs, and custom image generation services. Perfect for social media content creation, marketing posts, and visual storytelling.",
+      "source": "./",
+      "strict": false,
+      "skills": ["./"]
+    }
+  ]
+}
